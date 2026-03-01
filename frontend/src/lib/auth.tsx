@@ -1,42 +1,61 @@
-import { createContext, useContext, useState, useCallback, type ReactNode } from "react";
+import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from "react";
+import { supabase } from "./supabase";
+import type { Session } from "@supabase/supabase-js";
 
 interface AuthContextType {
-  token: string | null;
-  login: (username: string, password: string) => Promise<void>;
+  session: Session | null;
+  login: (email: string, password: string) => Promise<void>;
   logout: () => void;
   isAuthenticated: boolean;
+  token: string | null;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [token, setToken] = useState<string | null>(() =>
-    localStorage.getItem("token")
-  );
+  const [session, setSession] = useState<Session | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  const login = useCallback(async (username: string, password: string) => {
-    const res = await fetch("/api/auth/login", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ username, password }),
+  useEffect(() => {
+    // Get initial session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      setLoading(false);
     });
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      throw new Error(err.detail || "Login failed");
-    }
-    const data = await res.json();
-    localStorage.setItem("token", data.access_token);
-    setToken(data.access_token);
+
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (_event, session) => {
+        setSession(session);
+      }
+    );
+
+    return () => subscription.unsubscribe();
   }, []);
 
-  const logout = useCallback(() => {
-    localStorage.removeItem("token");
-    setToken(null);
+  const login = useCallback(async (email: string, password: string) => {
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) throw new Error(error.message);
   }, []);
+
+  const logout = useCallback(async () => {
+    await supabase.auth.signOut();
+    setSession(null);
+  }, []);
+
+  if (loading) {
+    return <div style={{ display: "flex", justifyContent: "center", alignItems: "center", minHeight: "100vh" }}>Loading...</div>;
+  }
 
   return (
     <AuthContext.Provider
-      value={{ token, login, logout, isAuthenticated: !!token }}
+      value={{
+        session,
+        login,
+        logout,
+        isAuthenticated: !!session,
+        token: session?.access_token || null,
+      }}
     >
       {children}
     </AuthContext.Provider>

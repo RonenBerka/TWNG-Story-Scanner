@@ -1,30 +1,32 @@
-/** Typed API client for the TWNG backend. */
+/** Typed API client — calls Supabase Edge Functions. */
 
-const BASE = "/api";
+import { EDGE_BASE, supabase } from "./supabase";
 
-function getToken(): string | null {
-  return localStorage.getItem("token");
+async function getToken(): Promise<string | null> {
+  const { data: { session } } = await supabase.auth.getSession();
+  return session?.access_token || null;
 }
 
-async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
-  const token = getToken();
+async function edgeFetch<T>(fnName: string, path: string, init?: RequestInit): Promise<T> {
+  const token = await getToken();
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
     ...(init?.headers as Record<string, string> ?? {}),
   };
 
-  const res = await fetch(`${BASE}${path}`, { ...init, headers });
+  const url = `${EDGE_BASE}/${fnName}${path}`;
+  const res = await fetch(url, { ...init, headers });
 
   if (res.status === 401) {
-    localStorage.removeItem("token");
+    await supabase.auth.signOut();
     window.location.href = "/login";
     throw new Error("Unauthorized");
   }
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
-    throw new Error(err.detail || `API error ${res.status}`);
+    throw new Error(err.error || err.detail || `API error ${res.status}`);
   }
 
   return res.json() as Promise<T>;
@@ -59,8 +61,6 @@ export interface Candidate {
 export interface CandidateList {
   items: Candidate[];
   total: number;
-  limit: number;
-  offset: number;
 }
 
 export interface CandidateFilters {
@@ -87,22 +87,34 @@ export function fetchCandidates(filters: CandidateFilters): Promise<CandidateLis
   if (filters.limit) params.set("limit", String(filters.limit));
   if (filters.offset != null) params.set("offset", String(filters.offset));
 
-  return apiFetch<CandidateList>(`/candidates?${params.toString()}`);
+  return edgeFetch<CandidateList>("scanner-candidates", `?${params.toString()}`);
 }
 
 export function fetchCandidate(id: string): Promise<Candidate> {
-  return apiFetch<Candidate>(`/candidates/${id}`);
+  return edgeFetch<Candidate>("scanner-candidates", `/${id}`);
 }
 
 export function approveCandidate(id: string): Promise<Candidate> {
-  return apiFetch<Candidate>(`/candidates/${id}/approve`, { method: "POST" });
+  return edgeFetch<Candidate>("scanner-candidates", `/${id}/approve`, { method: "POST" });
 }
 
 export function rejectCandidate(id: string, reason?: string): Promise<Candidate> {
-  return apiFetch<Candidate>(`/candidates/${id}/reject`, {
+  return edgeFetch<Candidate>("scanner-candidates", `/${id}/reject`, {
     method: "POST",
     body: JSON.stringify({ reason: reason || null }),
   });
+}
+
+/* ------------------------------------------------------------------ */
+/*  Admin tasks                                                        */
+/* ------------------------------------------------------------------ */
+
+export async function triggerRedditIngest(limit: number = 20): Promise<{ inserted: number; skipped: number; errors: number }> {
+  return edgeFetch("scanner-ingest-reddit", `?limit=${limit}`, { method: "POST" });
+}
+
+export async function triggerScoring(): Promise<{ scored: number; errors: number }> {
+  return edgeFetch("scanner-score", "", { method: "POST" });
 }
 
 /* ------------------------------------------------------------------ */
@@ -115,5 +127,5 @@ export interface ViewerData {
 }
 
 export function fetchViewerData(): Promise<ViewerData> {
-  return apiFetch<ViewerData>("/records/viewer");
+  return edgeFetch<ViewerData>("scanner-records", "/viewer");
 }

@@ -5,7 +5,7 @@ import { useAuth } from "../lib/auth";
 export default function Login() {
   const { login } = useAuth();
   const navigate = useNavigate();
-  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -15,7 +15,7 @@ export default function Login() {
     setError("");
     setLoading(true);
     try {
-      await login(username, password);
+      await login(email, password);
       navigate("/");
     } catch (err: any) {
       setError(err.message || "Login failed");
@@ -66,12 +66,12 @@ export default function Login() {
         )}
 
         <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: 600 }}>
-          Username
+          Email
         </label>
         <input
-          type="text"
-          value={username}
-          onChange={(e) => setUsername(e.target.value)}
+          type="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
           required
           style={{
             width: "100%",

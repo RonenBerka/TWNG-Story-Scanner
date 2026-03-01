@@ -2,6 +2,7 @@ import { useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../lib/auth";
 import { useCandidates, useApprove, useReject } from "../lib/queries";
+import { triggerRedditIngest, triggerScoring } from "../lib/api";
 import type { Candidate, CandidateFilters } from "../lib/api";
 import CandidateTable from "../components/CandidateTable";
 import CandidatePreview from "../components/CandidatePreview";
@@ -19,8 +20,10 @@ export default function Inbox() {
     offset: 0,
   });
   const [selected, setSelected] = useState<Candidate | null>(null);
+  const [scanning, setScanning] = useState(false);
+  const [scoring, setScoring] = useState(false);
 
-  const { data, isLoading, isError, error } = useCandidates(filters);
+  const { data, isLoading, isError, error, refetch } = useCandidates(filters);
   const approve = useApprove();
   const reject = useReject();
 
@@ -47,6 +50,32 @@ export default function Inbox() {
     [reject]
   );
 
+  const scanReddit = useCallback(async () => {
+    setScanning(true);
+    try {
+      const result = await triggerRedditIngest(50);
+      alert(`Scan complete: ${result.inserted} new, ${result.skipped} duplicates, ${result.errors} errors`);
+      refetch();
+    } catch (err: any) {
+      alert(`Scan failed: ${err.message}`);
+    } finally {
+      setScanning(false);
+    }
+  }, [refetch]);
+
+  const scoreAll = useCallback(async () => {
+    setScoring(true);
+    try {
+      const result = await triggerScoring();
+      alert(`Scoring complete: ${result.scored} scored, ${result.errors} errors`);
+      refetch();
+    } catch (err: any) {
+      alert(`Scoring failed: ${err.message}`);
+    } finally {
+      setScoring(false);
+    }
+  }, [refetch]);
+
   const totalPages = data ? Math.ceil(data.total / PAGE_SIZE) : 0;
   const currentPage = data ? Math.floor((filters.offset || 0) / PAGE_SIZE) + 1 : 1;
 
@@ -55,6 +84,20 @@ export default function Inbox() {
       <header className="inbox-header">
         <h1>TWNG Story Scanner</h1>
         <div className="header-right">
+          <button
+            className="btn btn-scan"
+            onClick={scanReddit}
+            disabled={scanning}
+          >
+            {scanning ? "Scanning..." : "Scan Reddit"}
+          </button>
+          <button
+            className="btn btn-score"
+            onClick={scoreAll}
+            disabled={scoring}
+          >
+            {scoring ? "Scoring..." : "Score All"}
+          </button>
           <button
             className="btn btn-viewer"
             onClick={() => navigate("/viewer")}
@@ -84,7 +127,7 @@ export default function Inbox() {
           {data && (
             <>
               <CandidateTable
-                candidates={data.items}
+                data={data.items}
                 selectedId={selected?.id}
                 onRowClick={handleRowClick}
               />
@@ -126,9 +169,10 @@ export default function Inbox() {
         {selected && (
           <CandidatePreview
             candidate={selected}
-            onClose={() => setSelected(null)}
             onApprove={handleApprove}
             onReject={handleReject}
+            isApproving={approve.isPending}
+            isRejecting={reject.isPending}
           />
         )}
       </div>
