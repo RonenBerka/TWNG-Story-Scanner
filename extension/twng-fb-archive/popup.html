@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    width: 360px;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    font-size: 13px;
+    color: #1a1a2e;
+    padding: 16px;
+    background: #fafafa;
+  }
+  h1 {
+    font-size: 15px;
+    font-weight: 600;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  h1 span { font-size: 18px; }
+  label {
+    display: block;
+    font-weight: 500;
+    margin-bottom: 4px;
+    color: #555;
+  }
+  input[type="text"], input[type="url"] {
+    width: 100%;
+    padding: 6px 8px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 12px;
+    margin-bottom: 10px;
+  }
+  input:focus { border-color: #4a6cf7; outline: none; }
+  .row { display: flex; gap: 8px; }
+  .row > * { flex: 1; }
+  .btn {
+    display: block;
+    width: 100%;
+    padding: 8px;
+    border: none;
+    border-radius: 4px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    margin-bottom: 8px;
+  }
+  .btn-primary { background: #4a6cf7; color: #fff; }
+  .btn-primary:hover { background: #3b5de7; }
+  .btn-primary:disabled { background: #a0b0f0; cursor: default; }
+  .btn-secondary { background: #e0e0e0; color: #333; }
+  .btn-secondary:hover { background: #d0d0d0; }
+  .btn-secondary:disabled { background: #eee; color: #999; cursor: default; }
+  #status {
+    margin-top: 8px;
+    padding: 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    display: none;
+  }
+  #status.success { display: block; background: #e8f5e9; color: #2e7d32; }
+  #status.error   { display: block; background: #fbe9e7; color: #c62828; }
+  #status.info    { display: block; background: #e3f2fd; color: #1565c0; }
+  .count { font-weight: 600; }
+  .divider {
+    border-top: 1px solid #e0e0e0;
+    margin: 12px 0;
+  }
+  .settings-toggle {
+    font-size: 11px;
+    color: #888;
+    cursor: pointer;
+    text-decoration: underline;
+    margin-bottom: 8px;
+    display: inline-block;
+  }
+  .settings { display: none; }
+  .settings.open { display: block; }
+</style>
+</head>
+<body>
+
+<h1><span>&#127928;</span> TWNG FB Archive</h1>
+
+<div class="row">
+  <div>
+    <label>Group name</label>
+    <input type="text" id="groupName" placeholder="e.g. Guitar Lovers IL">
+  </div>
+  <div>
+    <label>Search query</label>
+    <input type="text" id="query" placeholder="e.g. guitar story">
+  </div>
+</div>
+
+<button class="btn btn-secondary" id="captureBtn">&#128247; Capture Results</button>
+<button class="btn btn-primary" id="sendBtn" disabled>&#128640; Send to TWNG (<span id="captureCount">0</span> posts)</button>
+
+<div id="status"></div>
+
+<div class="divider"></div>
+<span class="settings-toggle" id="settingsToggle">&#9881; Settings</span>
+<div class="settings" id="settingsPanel">
+  <label>API Base URL</label>
+  <input type="url" id="apiBase" placeholder="http://localhost:8000">
+  <label>Admin JWT</label>
+  <input type="text" id="jwt" placeholder="Paste JWT token here">
+  <button class="btn btn-secondary" id="saveSettings">Save settings</button>
+</div>
+
+<script src="popup.js"></script>
+</body>
+</html>
