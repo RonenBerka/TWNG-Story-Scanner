@@ -1,4 +1,4 @@
-.PHONY: dev down seed ingest score enrich pipeline test logs clean
+.PHONY: dev down seed ingest score enrich load-viewer pipeline test logs clean help
 
 # ---------- Core ----------
 
@@ -26,6 +26,9 @@ score:                ## Score unscored candidates
 
 enrich:               ## Enrich candidates above threshold
 	docker compose exec backend python -m app.cli enrich-candidates
+
+load-viewer:          ## Load viewer extraction JSON into records
+	docker compose exec backend python -m app.cli load-viewer-data seed_viewer_data.json
 
 pipeline: ingest score enrich   ## Run full pipeline: ingest → score → enrich
 

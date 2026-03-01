@@ -35,6 +35,10 @@ def main() -> None:
     # seed (migrations + admin info)
     sub.add_parser("seed", help="Run migrations and show admin credentials")
 
+    # load-viewer-data
+    load_viewer = sub.add_parser("load-viewer-data", help="Import extraction viewer JSON into TWNGStoryRecords")
+    load_viewer.add_argument("json_file", help="Path to viewer JSON file (with extraction_metadata + guitars)")
+
     args = parser.parse_args()
 
     if args.command == "ingest-reddit":
@@ -74,6 +78,15 @@ def main() -> None:
         from app.db.seed import run_seed
 
         run_seed()
+
+    elif args.command == "load-viewer-data":
+        from app.db.load_viewer import load_viewer_json
+
+        stats = load_viewer_json(args.json_file)
+        print(
+            f"Done — inserted: {stats['inserted']}, skipped: {stats['skipped']}, "
+            f"errors: {stats['errors']}"
+        )
 
     else:
         parser.print_help()

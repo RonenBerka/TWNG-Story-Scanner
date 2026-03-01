@@ -87,6 +87,7 @@ class TWNGStoryRecord(Base):
     takedown_status = Column(
         Text, nullable=False, server_default="active"
     )  # active|removed
+    extraction_data = Column(JSONB, nullable=True)  # rich viewer-schema JSON (guitars, specs, timeline, etc.)
 
     candidate = relationship("CandidateStory", back_populates="record")
 

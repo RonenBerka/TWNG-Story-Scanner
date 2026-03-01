@@ -271,6 +271,17 @@ tbody tr.selected { background: #e2ecff; }
   cursor: pointer;
 }
 .btn-fb-archive:hover { background: #166fe5; }
+.btn-viewer {
+  background: #1a1a2e;
+  color: #C8860A;
+  padding: 0.35rem 0.75rem;
+  border: 1px solid #C8860A;
+  border-radius: var(--radius);
+  font-size: 0.8rem;
+  font-weight: 500;
+  cursor: pointer;
+}
+.btn-viewer:hover { background: #C8860A; color: #1a1a2e; }
 
 /* --- Modal --- */
 .modal-overlay {

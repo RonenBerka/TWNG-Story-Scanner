@@ -1,4 +1,5 @@
 import { useState, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "../lib/auth";
 import { useCandidates, useApprove, useReject } from "../lib/queries";
 import type { Candidate, CandidateFilters } from "../lib/api";
@@ -11,6 +12,7 @@ const PAGE_SIZE = 30;
 
 export default function Inbox() {
   const { logout } = useAuth();
+  const navigate = useNavigate();
   const [filters, setFilters] = useState<CandidateFilters>({
     status: "new",
     limit: PAGE_SIZE,
@@ -53,6 +55,12 @@ export default function Inbox() {
       <header className="inbox-header">
         <h1>TWNG Story Scanner</h1>
         <div className="header-right">
+          <button
+            className="btn btn-viewer"
+            onClick={() => navigate("/viewer")}
+          >
+            Viewer
+          </button>
           <FbArchiveHelp />
           <span className="total-badge">
             {data ? `${data.total} candidates` : "..."}
@@ -70,22 +78,26 @@ export default function Inbox() {
           {isLoading && <div className="loading">Loading candidates...</div>}
           {isError && (
             <div className="error-box">
-              Error: {error?.message || "Failed to load candidates"}
+              Error: {(error as Error)?.message || "Unknown error"}
             </div>
           )}
           {data && (
             <>
               <CandidateTable
-                data={data.items}
-                onRowClick={handleRowClick}
+                candidates={data.items}
                 selectedId={selected?.id}
+                onRowClick={handleRowClick}
               />
               {totalPages > 1 && (
                 <div className="pagination">
                   <button
+                    className="btn btn-sm"
                     disabled={currentPage <= 1}
                     onClick={() =>
-                      setFilters((f) => ({ ...f, offset: (f.offset || 0) - PAGE_SIZE }))
+                      setFilters((f) => ({
+                        ...f,
+                        offset: Math.max(0, (f.offset || 0) - PAGE_SIZE),
+                      }))
                     }
                   >
                     Prev
@@ -94,9 +106,13 @@ export default function Inbox() {
                     Page {currentPage} of {totalPages}
                   </span>
                   <button
+                    className="btn btn-sm"
                     disabled={currentPage >= totalPages}
                     onClick={() =>
-                      setFilters((f) => ({ ...f, offset: (f.offset || 0) + PAGE_SIZE }))
+                      setFilters((f) => ({
+                        ...f,
+                        offset: (f.offset || 0) + PAGE_SIZE,
+                      }))
                     }
                   >
                     Next
@@ -108,22 +124,12 @@ export default function Inbox() {
         </div>
 
         {selected && (
-          <div className="inbox-preview-area">
-            <button
-              className="preview-close"
-              onClick={() => setSelected(null)}
-              title="Close preview"
-            >
-              &times;
-            </button>
-            <CandidatePreview
-              candidate={selected}
-              onApprove={handleApprove}
-              onReject={handleReject}
-              isApproving={approve.isPending}
-              isRejecting={reject.isPending}
-            />
-          </div>
+          <CandidatePreview
+            candidate={selected}
+            onClose={() => setSelected(null)}
+            onApprove={handleApprove}
+            onReject={handleReject}
+          />
         )}
       </div>
     </div>

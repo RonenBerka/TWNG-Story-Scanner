@@ -104,3 +104,16 @@ export function rejectCandidate(id: string, reason?: string): Promise<Candidate>
     body: JSON.stringify({ reason: reason || null }),
   });
 }
+
+/* ------------------------------------------------------------------ */
+/*  Viewer data                                                        */
+/* ------------------------------------------------------------------ */
+
+export interface ViewerData {
+  extraction_metadata: Record<string, unknown>;
+  guitars: Record<string, unknown>[];
+}
+
+export function fetchViewerData(): Promise<ViewerData> {
+  return apiFetch<ViewerData>("/records/viewer");
+}

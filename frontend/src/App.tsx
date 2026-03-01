@@ -3,6 +3,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AuthProvider, useAuth } from "./lib/auth";
 import Login from "./pages/Login";
 import Inbox from "./pages/Inbox";
+import Viewer from "./pages/Viewer";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -28,6 +29,14 @@ function App() {
               element={
                 <ProtectedRoute>
                   <Inbox />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/viewer"
+              element={
+                <ProtectedRoute>
+                  <Viewer />
                 </ProtectedRoute>
               }
             />
