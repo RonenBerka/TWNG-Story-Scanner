@@ -22,3 +22,13 @@ pgdata/
 *.swp
 *.swo
 .DS_Store
+
+# Build artifacts
+*.tsbuildinfo
+
+# Nested duplicate repo
+TWNG-Story-Scanner/
+
+# One-off scripts / backups
+seed_viewer_data_backup.json
+apply_viewer_integration.sh

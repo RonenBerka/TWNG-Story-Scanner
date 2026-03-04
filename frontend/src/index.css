@@ -1,25 +1,31 @@
 /* TWNG Story Scanner — Admin UI styles */
 
 :root {
-  --bg: #f8f9fa;
+  /* TWNG light-mode palette */
+  --amber: #A06E08; --amber-b: #C8860A; --amber-dim: #7A520A;
+  --ag: rgba(160,110,8,0.08); --ab: rgba(160,110,8,0.18);
+  --bg: #FAFAF8; --bg1: #F3F1ED; --bg2: #EAE7E1; --bg3: #E0DCD5;
+  --border: #E0DCD5; --border2: #D5D0C8; --border3: #C8C2B8;
+  --text: #1A1A18; --dim: #6B6358; --muted: #B8B0A4;
+  --green: #1A8A42; --blue: #3B72D6; --red: #DC2626; --purple: #7C5CC4;
+  /* Compat aliases for Scanner page */
   --surface: #ffffff;
-  --border: #dee2e6;
-  --text: #212529;
-  --text-muted: #6c757d;
-  --primary: #0d6efd;
-  --success: #198754;
-  --danger: #dc3545;
-  --warning: #ffc107;
+  --text-muted: #6B6358;
+  --primary: #3B72D6;
+  --success: #1A8A42;
+  --danger: #DC2626;
+  --warning: #C8860A;
   --radius: 6px;
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
   background: var(--bg);
   color: var(--text);
   line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
 }
 
 /* --- Header --- */

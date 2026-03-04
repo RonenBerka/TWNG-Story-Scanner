@@ -1,4 +1,4 @@
-/** Typed API client — calls Supabase Edge Functions. */
+/** Typed API client — calls Supabase Edge Functions + direct Supabase queries. */
 
 import { EDGE_BASE, supabase } from "./supabase";
 
@@ -43,6 +43,7 @@ export interface Candidate {
   source_url: string;
   title: string | null;
   excerpt: string | null;
+  raw_text?: string | null;
   created_at_source: string | null;
   ingested_at: string;
   language: string | null;
@@ -69,6 +70,7 @@ export interface CandidateFilters {
   source?: string;
   lang?: string;
   q?: string;
+  sort?: string;
   limit?: number;
   offset?: number;
 }
@@ -84,6 +86,7 @@ export function fetchCandidates(filters: CandidateFilters): Promise<CandidateLis
   if (filters.source) params.set("source", filters.source);
   if (filters.lang) params.set("lang", filters.lang);
   if (filters.q) params.set("q", filters.q);
+  if (filters.sort) params.set("sort", filters.sort);
   if (filters.limit) params.set("limit", String(filters.limit));
   if (filters.offset != null) params.set("offset", String(filters.offset));
 
@@ -109,12 +112,45 @@ export function rejectCandidate(id: string, reason?: string): Promise<Candidate>
 /*  Admin tasks                                                        */
 /* ------------------------------------------------------------------ */
 
+const DOCKER_BACKEND = import.meta.env.VITE_BACKEND_URL || "http://localhost:8000";
+
 export async function triggerRedditIngest(limit: number = 20): Promise<{ inserted: number; skipped: number; errors: number }> {
-  return edgeFetch("scanner-ingest-reddit", `?limit=${limit}`, { method: "POST" });
+  const res = await fetch(`${DOCKER_BACKEND}/api/public/scan-reddit?limit=${limit}`, {
+    method: "POST",
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || err.error || `Scan failed (${res.status})`);
+  }
+  return res.json();
 }
 
 export async function triggerScoring(): Promise<{ scored: number; errors: number }> {
   return edgeFetch("scanner-score", "", { method: "POST" });
+}
+
+/* ------------------------------------------------------------------ */
+/*  Direct Supabase queries for Extraction workflow                    */
+/* ------------------------------------------------------------------ */
+
+export async function fetchCandidateRawText(id: string): Promise<string> {
+  const { data, error } = await supabase
+    .from("candidate_stories")
+    .select("raw_text")
+    .eq("id", id)
+    .single();
+
+  if (error) throw new Error(error.message);
+  return data?.raw_text || "";
+}
+
+export async function markCandidateExtracted(id: string): Promise<void> {
+  const { error } = await supabase
+    .from("candidate_stories")
+    .update({ status: "extracted" })
+    .eq("id", id);
+
+  if (error) throw new Error(error.message);
 }
 
 /* ------------------------------------------------------------------ */

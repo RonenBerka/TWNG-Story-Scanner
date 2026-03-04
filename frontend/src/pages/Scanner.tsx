@@ -1,6 +1,4 @@
 import { useState, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
-import { useAuth } from "../lib/auth";
 import { useCandidates, useApprove, useReject } from "../lib/queries";
 import { triggerRedditIngest, triggerScoring } from "../lib/api";
 import type { Candidate, CandidateFilters } from "../lib/api";
@@ -11,9 +9,7 @@ import FbArchiveHelp from "../components/FbArchiveHelp";
 
 const PAGE_SIZE = 30;
 
-export default function Inbox() {
-  const { logout } = useAuth();
-  const navigate = useNavigate();
+export default function Scanner() {
   const [filters, setFilters] = useState<CandidateFilters>({
     status: "new",
     limit: PAGE_SIZE,
@@ -57,7 +53,11 @@ export default function Inbox() {
       alert(`Scan complete: ${result.inserted} new, ${result.skipped} duplicates, ${result.errors} errors`);
       refetch();
     } catch (err: any) {
-      alert(`Scan failed: ${err.message}`);
+      if (err instanceof TypeError && err.message.includes("fetch")) {
+        alert("Reddit scanning requires the local Docker backend.\n\nRun 'docker compose up' on your machine to enable scanning.");
+      } else {
+        alert(`Scan failed: ${err.message}`);
+      }
     } finally {
       setScanning(false);
     }
@@ -82,35 +82,18 @@ export default function Inbox() {
   return (
     <div className="inbox-layout">
       <header className="inbox-header">
-        <h1>TWNG Story Scanner</h1>
+        <h1>Story Scanner</h1>
         <div className="header-right">
-          <button
-            className="btn btn-scan"
-            onClick={scanReddit}
-            disabled={scanning}
-          >
+          <button className="btn btn-scan" onClick={scanReddit} disabled={scanning}>
             {scanning ? "Scanning..." : "Scan Reddit"}
           </button>
-          <button
-            className="btn btn-score"
-            onClick={scoreAll}
-            disabled={scoring}
-          >
+          <button className="btn btn-score" onClick={scoreAll} disabled={scoring}>
             {scoring ? "Scoring..." : "Score All"}
-          </button>
-          <button
-            className="btn btn-viewer"
-            onClick={() => navigate("/viewer")}
-          >
-            Viewer
           </button>
           <FbArchiveHelp />
           <span className="total-badge">
             {data ? `${data.total} candidates` : "..."}
           </span>
-          <button className="btn btn-logout" onClick={logout}>
-            Logout
-          </button>
         </div>
       </header>
 

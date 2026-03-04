@@ -30,6 +30,7 @@ export default function Filters({ filters, onChange }: Props) {
           <option value="">All</option>
           <option value="new">New</option>
           <option value="approved">Approved</option>
+          <option value="extracted">Extracted</option>
           <option value="rejected">Rejected</option>
           <option value="reviewed">Reviewed</option>
         </select>
@@ -79,6 +80,20 @@ export default function Filters({ filters, onChange }: Props) {
           <option value="">All</option>
           <option value="en">EN</option>
           <option value="he">HE</option>
+        </select>
+      </label>
+
+      <label>
+        Sort by
+        <select
+          value={filters.sort || "score"}
+          onChange={(e) =>
+            onChange({ ...filters, sort: e.target.value, offset: 0 })
+          }
+        >
+          <option value="score">Score (high first)</option>
+          <option value="date_desc">Date (newest)</option>
+          <option value="date_asc">Date (oldest)</option>
         </select>
       </label>
 

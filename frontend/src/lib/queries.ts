@@ -5,6 +5,7 @@ import {
   fetchCandidates,
   approveCandidate,
   rejectCandidate,
+  markCandidateExtracted,
   type CandidateFilters,
   type CandidateList,
   type Candidate,
@@ -63,6 +64,21 @@ export function useReject() {
         }
       );
     },
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: ["candidates"] });
+    },
+  });
+}
+
+export function useApprovedCandidates() {
+  return useCandidates({ status: "approved", sort: "date_desc", limit: 100 });
+}
+
+export function useMarkExtracted() {
+  const qc = useQueryClient();
+
+  return useMutation<void, Error, string>({
+    mutationFn: (id) => markCandidateExtracted(id),
     onSettled: () => {
       qc.invalidateQueries({ queryKey: ["candidates"] });
     },
