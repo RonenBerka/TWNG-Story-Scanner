@@ -57,6 +57,9 @@ export interface Candidate {
   tags_pred: string[] | null;
   status: string;
   reviewer_notes: string | null;
+  author_username: string | null;
+  author_profile_url: string | null;
+  image_urls: string[] | null;
 }
 
 export interface CandidateList {

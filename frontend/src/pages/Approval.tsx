@@ -72,6 +72,8 @@ export default function Approval() {
           owner_contact: {
             source_platform: g.provenance?.source_platform || "unknown",
             source_post_url: g.provenance?.source_url || null,
+            source_username: g.owner_contact?.source_username || null,
+            source_profile_url: g.owner_contact?.source_profile_url || null,
             display_name: g.owner_contact?.name || null,
             email: g.owner_contact?.email || null,
             facebook_profile: g.owner_contact?.facebook_profile || null,

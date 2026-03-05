@@ -9,6 +9,31 @@ export function mapRowToGuitar(row: SeedGuitarRow): Guitar {
       ? { owner_searching: true }
       : null);
 
+  // Merge provenance: prefer extraction_metadata, fall back to row columns
+  const metaProv = meta.provenance || {};
+  const provenance = {
+    source_url: metaProv.source_url || row.source_url || null,
+    source_platform: metaProv.source_platform || row.source_platform || "unknown",
+    source_language: metaProv.source_language || row.language || "en",
+    extraction_confidence: metaProv.extraction_confidence || {
+      brand_model: "medium",
+      year: "medium",
+      story: "medium",
+    },
+  };
+
+  // Merge owner_contact: prefer extraction_metadata, enrich with source info
+  const metaOC = meta.owner_contact || {};
+  const owner_contact = {
+    name: metaOC.name || metaOC.display_name || null,
+    email: metaOC.email || null,
+    facebook_profile: metaOC.facebook_profile || metaOC.source_profile_url || null,
+    source_username: metaOC.source_username || null,
+    source_profile_url: metaOC.source_profile_url || null,
+    invite_sent: metaOC.invite_sent || false,
+    invite_sent_at: metaOC.invite_sent_at || null,
+  };
+
   return {
     _db_id: row.id,
     _db_status: row.status,
@@ -30,13 +55,7 @@ export function mapRowToGuitar(row: SeedGuitarRow): Guitar {
       `${(row.brand || "").toLowerCase()}|${(row.model || "").toLowerCase()}|${row.year || ""}`,
     status: meta.searching ? "sold_searching" : "owned",
 
-    owner_contact: meta.owner_contact || {
-      name: null,
-      email: null,
-      facebook_profile: null,
-      invite_sent: false,
-      invite_sent_at: null,
-    },
+    owner_contact,
     images: meta.images || [],
     tags: meta.tags || meta.twng_tags || [],
     timeline_events: meta.timeline_events || [],
@@ -49,16 +68,7 @@ export function mapRowToGuitar(row: SeedGuitarRow): Guitar {
       famous_connection: meta.famous_connection || null,
       notable_events: [],
     },
-    provenance: meta.provenance || {
-      source_url: row.source_url,
-      source_platform: row.source_platform || "Facebook",
-      source_language: row.language || "he",
-      extraction_confidence: {
-        brand_model: "medium",
-        year: "medium",
-        story: "medium",
-      },
-    },
+    provenance,
     searching,
     estimated_value_range_usd:
       meta.estimated_value_usd || meta.estimated_value_range_usd || null,

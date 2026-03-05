@@ -38,7 +38,10 @@ export default function Extraction() {
     postPlatform: string,
     postLang: string,
     postSourceUrl: string,
-    candidateId?: string
+    candidateId?: string,
+    authorUsername?: string | null,
+    authorProfileUrl?: string | null,
+    imageUrls?: string[] | null,
   ) {
     if (!postText.trim()) return alert("No text to extract from.");
     if (!apiKey.trim()) return alert("Please enter your Anthropic API key.");
@@ -63,17 +66,43 @@ export default function Extraction() {
       );
 
       setStep("save");
+
+      // Enrich extraction_metadata with source contact & images from candidate
+      const enriched = { ...extracted };
+      if (postSourceUrl) {
+        enriched.provenance = {
+          ...enriched.provenance,
+          source_url: postSourceUrl,
+          source_platform: postPlatform,
+        };
+      }
+      if (authorUsername || authorProfileUrl) {
+        enriched.owner_contact = {
+          ...enriched.owner_contact,
+          source_username: authorUsername || null,
+          source_profile_url: authorProfileUrl || null,
+        };
+      }
+      if (imageUrls && imageUrls.length > 0) {
+        enriched.images = imageUrls.map((url, i) => ({
+          url,
+          is_main: i === 0,
+          caption: null,
+          source_platform: postPlatform,
+        }));
+      }
+
       await insertMut.mutateAsync({
-        brand: extracted.brand || null,
-        model: extracted.model || null,
-        year: extracted.year || null,
-        story: extracted.story?.narrative || extracted.story?.summary || null,
+        brand: enriched.brand || null,
+        model: enriched.model || null,
+        year: enriched.year || null,
+        story: enriched.story?.narrative || enriched.story?.summary || null,
         source_url: postSourceUrl || null,
         source_platform: postPlatform,
         language: postLang,
         confidence_score: confidence,
         raw_post_text: postText.trim(),
-        extraction_metadata: extracted,
+        extraction_metadata: enriched,
       });
 
       // Mark candidate as extracted if from queue
@@ -110,7 +139,10 @@ export default function Extraction() {
       const postLang = candidate.language || "en";
       const postSourceUrl = candidate.source_url || "";
 
-      await doExtraction(rawText, postPlatform, postLang, postSourceUrl, candidate.id);
+      await doExtraction(
+        rawText, postPlatform, postLang, postSourceUrl, candidate.id,
+        candidate.author_username, candidate.author_profile_url, candidate.image_urls,
+      );
     } catch (e: any) {
       setStep("error");
       setExtractingId(null);

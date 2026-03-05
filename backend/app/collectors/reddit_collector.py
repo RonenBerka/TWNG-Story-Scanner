@@ -112,6 +112,8 @@ def _ingest_via_json(limit_per_query: int, db: Session, stats: dict) -> None:
                     selftext=post.get("selftext") or None,
                     permalink=post.get("permalink", ""),
                     created_utc=post.get("created_utc", 0),
+                    author=post.get("author"),
+                    image_urls=_extract_image_urls(post),
                 )
 
             time.sleep(REQUEST_DELAY)
@@ -147,6 +149,14 @@ def _ingest_via_praw(limit_per_query: int, db: Session, stats: dict) -> None:
                 continue
 
             for post in results:
+                # PRAW: extract image URLs from post attributes
+                praw_images: list[str] = []
+                post_url = getattr(post, "url", "")
+                if any(ext in post_url for ext in [".jpg", ".jpeg", ".png", ".gif", ".webp"]):
+                    praw_images.append(post_url)
+                elif "i.redd.it" in post_url or "i.imgur.com" in post_url:
+                    praw_images.append(post_url)
+
                 _save_post(
                     db=db,
                     stats=stats,
@@ -155,6 +165,8 @@ def _ingest_via_praw(limit_per_query: int, db: Session, stats: dict) -> None:
                     selftext=post.selftext or None,
                     permalink=post.permalink,
                     created_utc=post.created_utc,
+                    author=str(post.author) if post.author else None,
+                    image_urls=praw_images or None,
                 )
 
             time.sleep(1)
@@ -164,6 +176,31 @@ def _ingest_via_praw(limit_per_query: int, db: Session, stats: dict) -> None:
 # Shared insert logic
 # ---------------------------------------------------------------------------
 
+def _extract_image_urls(post: dict) -> list[str]:
+    """Extract image URLs from a Reddit post JSON."""
+    urls: list[str] = []
+    # Direct image link (i.redd.it, imgur, etc.)
+    post_url = post.get("url", "")
+    if any(ext in post_url for ext in [".jpg", ".jpeg", ".png", ".gif", ".webp"]):
+        urls.append(post_url)
+    elif "i.redd.it" in post_url or "i.imgur.com" in post_url:
+        urls.append(post_url)
+    # Reddit gallery
+    if post.get("is_gallery") and post.get("media_metadata"):
+        for _key, meta in post["media_metadata"].items():
+            src = meta.get("s", {}).get("u") or meta.get("s", {}).get("gif")
+            if src:
+                urls.append(src.replace("&amp;", "&"))
+    # Preview images
+    if not urls:
+        previews = post.get("preview", {}).get("images", [])
+        if previews:
+            src = previews[0].get("source", {}).get("url", "")
+            if src:
+                urls.append(src.replace("&amp;", "&"))
+    return urls
+
+
 def _save_post(
     db: Session,
     stats: dict,
@@ -172,6 +209,8 @@ def _save_post(
     selftext: str | None,
     permalink: str,
     created_utc: float,
+    author: str | None = None,
+    image_urls: list[str] | None = None,
 ) -> None:
     """Save a single post to CandidateStory, handling dedup."""
     try:
@@ -185,6 +224,9 @@ def _save_post(
             excerpt=_build_excerpt(title, selftext),
             created_at_source=datetime.fromtimestamp(created_utc, tz=timezone.utc),
             language=_guess_language(combined_text),
+            author_username=author,
+            author_profile_url=f"https://www.reddit.com/user/{author}" if author else None,
+            image_urls=image_urls or None,
         )
         db.add(candidate)
         db.commit()

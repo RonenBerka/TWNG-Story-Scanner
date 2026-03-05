@@ -39,6 +39,8 @@ export interface Guitar {
     name: string | null;
     email: string | null;
     facebook_profile: string | null;
+    source_username: string | null;
+    source_profile_url: string | null;
     invite_sent: boolean;
     invite_sent_at: string | null;
   };
