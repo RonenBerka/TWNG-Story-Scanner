@@ -9,6 +9,11 @@ interface Props {
   onFilterChange: (f: string) => void;
   selectedId: string | null;
   onSelect: (g: Guitar) => void;
+  checkedIds?: Set<string>;
+  onToggleCheck?: (id: string) => void;
+  onSelectAll?: () => void;
+  onExport?: () => void;
+  exporting?: boolean;
 }
 
 export default function GuitarSidebar({
@@ -18,7 +23,15 @@ export default function GuitarSidebar({
   onFilterChange,
   selectedId,
   onSelect,
+  checkedIds,
+  onToggleCheck,
+  onSelectAll,
+  onExport,
+  exporting,
 }: Props) {
+  const checkedCount = checkedIds?.size || 0;
+  const allChecked = checkedCount > 0 && checkedCount === guitars.length;
+
   return (
     <aside className="av-sidebar">
       <div className="av-s-head">
@@ -34,6 +47,29 @@ export default function GuitarSidebar({
             </button>
           ))}
         </div>
+
+        {onExport && (
+          <div className="av-export-bar">
+            <label className="av-select-all" onClick={onSelectAll}>
+              <input
+                type="checkbox"
+                checked={allChecked}
+                readOnly
+                className="av-checkbox"
+              />
+              <span>Select all</span>
+            </label>
+            <button
+              className="av-export-btn"
+              onClick={onExport}
+              disabled={checkedCount === 0 || exporting}
+            >
+              {exporting
+                ? "Exporting..."
+                : `Export${checkedCount > 0 ? ` (${checkedCount})` : ""}`}
+            </button>
+          </div>
+        )}
       </div>
 
       <div className="av-s-list">
@@ -47,6 +83,8 @@ export default function GuitarSidebar({
             key={g._db_id}
             g={g}
             active={g._db_id === selectedId}
+            checked={checkedIds?.has(g._db_id) || false}
+            onCheck={onToggleCheck ? () => onToggleCheck(g._db_id) : undefined}
             onClick={() => onSelect(g)}
           />
         ))}
@@ -60,15 +98,28 @@ export default function GuitarSidebar({
 function GuitarCard({
   g,
   active,
+  checked,
+  onCheck,
   onClick,
 }: {
   g: Guitar;
   active: boolean;
+  checked: boolean;
+  onCheck?: () => void;
   onClick: () => void;
 }) {
   const typeLabel = (g.instrument_type || "guitar").replace(/_/g, " ");
   return (
-    <div className={`gc${active ? " active" : ""}`} onClick={onClick}>
+    <div className={`gc${active ? " active" : ""}${checked ? " checked" : ""}`} onClick={onClick}>
+      {onCheck && (
+        <input
+          type="checkbox"
+          className="av-checkbox gc-check"
+          checked={checked}
+          onClick={(e) => e.stopPropagation()}
+          onChange={onCheck}
+        />
+      )}
       <div className="gc-top">
         <div>
           <div className="gc-instrument">{typeLabel}</div>

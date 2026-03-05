@@ -594,6 +594,94 @@
 }
 .btn-copy-link:hover { background: var(--ab); }
 
+/* ── EXPORT BAR ── */
+.av-export-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+}
+.av-select-all {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  cursor: pointer;
+  font-size: 11px;
+  font-family: 'JetBrains Mono', monospace;
+  color: var(--dim);
+  user-select: none;
+  transition: color 0.15s;
+}
+.av-select-all:hover { color: var(--text); }
+
+.av-checkbox {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 14px;
+  height: 14px;
+  border: 1.5px solid var(--border2);
+  border-radius: 3px;
+  background: var(--bg);
+  cursor: pointer;
+  transition: all 0.15s;
+  flex-shrink: 0;
+  position: relative;
+}
+.av-checkbox:checked {
+  background: var(--amber);
+  border-color: var(--amber);
+}
+.av-checkbox:checked::after {
+  content: '✓';
+  position: absolute;
+  top: -1px;
+  left: 1.5px;
+  font-size: 11px;
+  color: #000;
+  font-weight: 700;
+}
+.av-checkbox:hover { border-color: var(--ab); }
+
+.av-export-btn {
+  background: var(--amber);
+  color: #000;
+  border: none;
+  border-radius: 6px;
+  padding: 6px 14px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+.av-export-btn:hover:not(:disabled) {
+  background: var(--amber-b);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(160,110,8,0.2);
+}
+.av-export-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+/* guitar card checkbox */
+.gc-check {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 2;
+}
+.gc.checked {
+  background: rgba(160,110,8,0.04);
+  border-color: var(--ab);
+}
+
 /* ── RESPONSIVE ── */
 @media (max-width: 900px) {
   .av-layout { grid-template-columns: 1fr; }
