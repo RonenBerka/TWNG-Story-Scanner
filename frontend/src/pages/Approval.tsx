@@ -71,15 +71,20 @@ export default function Approval() {
           },
           owner_contact: {
             source_platform: g.provenance?.source_platform || "unknown",
-            source_url: g.provenance?.source_url || null,
+            source_post_url: g.provenance?.source_url || null,
             display_name: g.owner_contact?.name || null,
             email: g.owner_contact?.email || null,
+            facebook_profile: g.owner_contact?.facebook_profile || null,
           },
+          images: (g.images || []).map((img: any) => ({
+            url: img.url || img.src || null,
+            caption: img.caption || null,
+            is_main: img.is_main || false,
+          })),
           tags: g.tags || [],
           timeline_events: g.timeline_events || [],
           story: g.story || null,
           source_metadata: {
-            scanner_record_id: g._db_id,
             source_platform: g.provenance?.source_platform || "unknown",
             source_url: g.provenance?.source_url || null,
             confidence_score: g.confidence_score,
