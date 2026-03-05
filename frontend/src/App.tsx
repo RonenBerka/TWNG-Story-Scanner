@@ -7,6 +7,7 @@ import Scanner from "./pages/Scanner";
 import Extraction from "./pages/Extraction";
 import Approval from "./pages/Approval";
 import Claims from "./pages/Claims";
+import Viewer from "./pages/Viewer";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -41,7 +42,7 @@ function App() {
             </Route>
             {/* Compat redirects */}
             <Route path="/inbox" element={<Navigate to="/scanner" replace />} />
-            <Route path="/viewer" element={<Navigate to="/approval" replace />} />
+            <Route path="/viewer" element={<ProtectedRoute><Viewer /></ProtectedRoute>} />
             <Route path="*" element={<Navigate to="/scanner" replace />} />
           </Routes>
         </BrowserRouter>

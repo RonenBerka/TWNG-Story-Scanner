@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.routes.auth import router as auth_router
 from app.api.routes.candidates import router as candidates_router
+from app.api.routes.export import router as export_router
 from app.api.routes.ingest_facebook import router as fb_ingest_router
 from app.api.routes.records import router as records_router
 from app.api.routes.tasks import router as tasks_router
@@ -21,6 +22,7 @@ app.add_middleware(
 
 app.include_router(auth_router)
 app.include_router(candidates_router)
+app.include_router(export_router)
 app.include_router(records_router)
 app.include_router(tasks_router)
 app.include_router(fb_ingest_router)

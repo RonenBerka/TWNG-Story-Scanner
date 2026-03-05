@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TWNG — Your Guitar Record</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500;1,600&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<style>
+:root {
+  --amber: #A06E08; --amber-bright: #C8860A;
+  --amber-glow: rgba(160,110,8,0.06); --amber-border: rgba(160,110,8,0.18);
+  --bg: #FAFAF8; --bg-card: #FFFFFF; --bg-raised: #F3F1ED;
+  --border: #E0DCD5; --border-light: #D5D0C8;
+  --text: #1A1A18; --text-dim: #6B6358; --text-muted: #B8B0A4;
+  --green: #1A8A42; --blue: #3B72D6; --red: #DC2626; --purple: #7C5CC4;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; -webkit-font-smoothing: antialiased; }
+
+/* loading */
+.loading-screen { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; }
+.spin-lg { width: 32px; height: 32px; border: 2px solid var(--border-light); border-top-color: var(--amber); border-radius: 50%; animation: spin 0.8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.load-text { font-size: 13px; color: var(--text-dim); font-family: 'JetBrains Mono', monospace; }
+
+/* error */
+.error-screen { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px; text-align: center; }
+.err-icon { font-size: 48px; margin-bottom: 16px; }
+.err-title { font-family: 'Cormorant Garamond', serif; font-size: 28px; margin-bottom: 8px; color: var(--text); }
+.err-desc { font-size: 14px; color: var(--text-dim); line-height: 1.6; max-width: 400px; }
+
+/* claimed state */
+.claimed-badge { display: inline-flex; align-items: center; gap: 6px; background: rgba(167,139,250,0.1); border: 1px solid rgba(167,139,250,0.3); border-radius: 100px; padding: 5px 14px; font-size: 11px; font-weight: 600; color: var(--purple); font-family: 'JetBrains Mono', monospace; }
+
+/* atmosphere */
+.atm { position: fixed; top: 0; left: 0; right: 0; bottom: 0; pointer-events: none; z-index: 0; background: radial-gradient(ellipse 70% 40% at 50% -5%, rgba(160,110,8,0.04), transparent 100%); }
+
+/* nav */
+.c-nav { position: fixed; top: 0; left: 0; right: 0; z-index: 100; display: flex; align-items: center; justify-content: space-between; padding: 18px 48px; background: rgba(250,250,248,0.92); backdrop-filter: blur(20px); border-bottom: 1px solid var(--border); }
+.c-logo { font-family: 'Cormorant Garamond', serif; font-size: 24px; font-weight: 500; color: var(--amber); letter-spacing: 0.14em; }
+.c-nav-btn { background: var(--amber); color: #000; border: none; border-radius: 7px; padding: 9px 20px; font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 700; cursor: pointer; transition: all 0.2s; }
+.c-nav-btn:hover { background: var(--amber-bright); }
+.c-nav-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.c-nav-btn.claimed { background: rgba(167,139,250,0.12); border: 1px solid rgba(167,139,250,0.3); color: var(--purple); cursor: default; }
+
+/* hero */
+.c-hero { position: relative; z-index: 1; max-width: 820px; margin: 0 auto; padding: 150px 48px 72px; }
+.found-pill { display: inline-flex; align-items: center; gap: 7px; background: var(--amber-glow); border: 1px solid var(--amber-border); border-radius: 100px; padding: 5px 14px; margin-bottom: 30px; opacity: 0; animation: rise 0.6s 0.1s cubic-bezier(0.22,1,0.36,1) forwards; }
+.pill-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--amber); animation: pdot 2.4s ease-in-out infinite; }
+@keyframes pdot { 0%,100%{opacity:1} 50%{opacity:0.3} }
+.pill-text { font-size: 10px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--amber); font-family: 'JetBrains Mono', monospace; }
+.h1 { font-family: 'Cormorant Garamond', serif; font-size: clamp(32px, 5vw, 54px); font-weight: 500; line-height: 1.1; margin-bottom: 12px; opacity: 0; animation: rise 0.8s 0.25s cubic-bezier(0.22,1,0.36,1) forwards; }
+.h1 em { font-style: italic; color: var(--amber); }
+.h2 { font-family: 'Cormorant Garamond', serif; font-size: clamp(17px, 2.4vw, 26px); font-weight: 400; font-style: italic; color: var(--text-dim); line-height: 1.4; margin-bottom: 26px; opacity: 0; animation: rise 0.8s 0.4s cubic-bezier(0.22,1,0.36,1) forwards; }
+.hbody { font-size: 15px; color: var(--text-dim); line-height: 1.78; max-width: 500px; margin-bottom: 36px; opacity: 0; animation: rise 0.8s 0.55s cubic-bezier(0.22,1,0.36,1) forwards; }
+.hbody strong { color: var(--text); font-weight: 500; }
+.hbtns { display: flex; gap: 12px; flex-wrap: wrap; opacity: 0; animation: rise 0.8s 0.7s cubic-bezier(0.22,1,0.36,1) forwards; }
+.btn-p { background: var(--amber); color: #000; border: none; border-radius: 10px; padding: 14px 28px; font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 700; cursor: pointer; transition: all 0.25s; }
+.btn-p:hover:not(:disabled) { background: var(--amber-bright); transform: translateY(-2px); box-shadow: 0 14px 36px rgba(200,134,10,0.32); }
+.btn-p:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+.btn-p.claimed { background: rgba(167,139,250,0.12); border: 1px solid rgba(167,139,250,0.3); color: var(--purple); cursor: default; }
+.btn-g { background: transparent; color: var(--text-dim); border: 1px solid var(--border-light); border-radius: 10px; padding: 14px 22px; font-family: 'DM Sans', sans-serif; font-size: 14px; cursor: pointer; transition: all 0.2s; }
+.btn-g:hover { border-color: var(--amber-border); color: var(--text); }
+@keyframes rise { from { opacity:0; transform:translateY(22px); } to { opacity:1; transform:translateY(0); } }
+
+/* record */
+.c-record { position: relative; z-index: 1; max-width: 820px; margin: 0 auto; padding: 0 48px 60px; opacity: 0; animation: rise 0.9s 0.9s cubic-bezier(0.22,1,0.36,1) forwards; }
+.rec-label { font-size: 9px; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; color: var(--text-muted); font-family: 'JetBrains Mono', monospace; margin-bottom: 14px; }
+.rec-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 20px; overflow: hidden; box-shadow: 0 24px 60px rgba(0,0,0,0.08); }
+.rec-visual { height: 200px; position: relative; overflow: hidden; background: linear-gradient(160deg, #F5F0E8 0%, #EDE8DF 60%, #E8E2D8 100%); display: flex; align-items: center; justify-content: center; }
+.rec-visual::before { content: ''; position: absolute; inset: 0; background: radial-gradient(ellipse 60% 80% at 40% 50%, rgba(160,110,8,0.06), transparent 70%); }
+.rec-emoji { font-size: 82px; position: relative; z-index: 1; filter: drop-shadow(0 0 32px rgba(160,110,8,0.15)); animation: hov 5s ease-in-out infinite; }
+@keyframes hov { 0%,100%{transform:rotate(-6deg)} 50%{transform:translateY(-10px) rotate(-4deg)} }
+.rv-src { position: absolute; top: 16px; left: 18px; font-size: 10px; font-family: 'JetBrains Mono', monospace; color: var(--text-dim); background: rgba(255,255,255,0.8); border: 1px solid var(--border); border-radius: 5px; padding: 3px 9px; z-index: 2; }
+.rv-doc { position: absolute; top: 16px; right: 18px; z-index: 2; display: flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 600; color: var(--green); background: rgba(82,201,122,0.1); border: 1px solid rgba(82,201,122,0.28); border-radius: 100px; padding: 4px 12px; }
+.rec-body { display: grid; grid-template-columns: 1fr 1.3fr 0.9fr; border-top: 1px solid var(--border); }
+.rb { padding: 22px 22px; border-right: 1px solid var(--border); }
+.rb:last-child { border-right: none; }
+.rb-lbl { font-size: 9px; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; color: var(--text-muted); font-family: 'JetBrains Mono', monospace; margin-bottom: 12px; }
+.g-make { font-size: 10px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--amber); margin-bottom: 4px; }
+.g-model { font-family: 'Cormorant Garamond', serif; font-size: 22px; font-weight: 600; line-height: 1.1; margin-bottom: 4px; }
+.g-year { font-size: 13px; color: var(--text-dim); margin-bottom: 16px; }
+.slist { display: flex; flex-direction: column; }
+.sr { display: flex; justify-content: space-between; font-size: 12px; padding: 5px 0; border-bottom: 1px solid var(--border); }
+.sr:last-child { border-bottom: none; }
+.sk { color: var(--text-dim); }
+.sv { font-weight: 500; font-size: 12px; }
+.tl-e { display: flex; gap: 10px; margin-bottom: 14px; }
+.tl-e:last-child { margin-bottom: 0; }
+.tl-ln { display: flex; flex-direction: column; align-items: center; flex-shrink: 0; }
+.tl-d { width: 8px; height: 8px; border-radius: 50%; border: 2px solid; background: var(--bg); flex-shrink: 0; margin-top: 3px; }
+.tl-d.b { border-color: var(--blue); } .tl-d.a { border-color: var(--amber); } .tl-d.m { border-color: var(--text-muted); }
+.tl-st { width: 1px; flex: 1; background: var(--border-light); margin-top: 4px; min-height: 10px; }
+.tl-c { flex: 1; }
+.tl-tier { font-size: 8px; font-family: 'JetBrains Mono', monospace; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 2px; }
+.tl-tier.b { color: var(--blue); } .tl-tier.a { color: var(--amber); } .tl-tier.m { color: var(--text-muted); }
+.tl-t { font-size: 13px; font-weight: 500; line-height: 1.3; margin-bottom: 2px; }
+.tl-d2 { font-size: 11px; color: var(--text-dim); line-height: 1.5; }
+.tl-dt { font-size: 10px; font-family: 'JetBrains Mono', monospace; color: var(--text-muted); margin-top: 2px; }
+.tags-col { display: flex; flex-direction: column; gap: 6px; }
+.tag { font-size: 11px; font-family: 'JetBrains Mono', monospace; background: var(--amber-glow); border: 1px solid var(--amber-border); color: var(--amber); padding: 4px 10px; border-radius: 6px; }
+
+/* what section */
+.c-what { position: relative; z-index: 1; max-width: 820px; margin: 0 auto; padding: 0 48px 60px; opacity: 0; animation: rise 0.8s 1.2s cubic-bezier(0.22,1,0.36,1) forwards; }
+.what-title { font-family: 'Cormorant Garamond', serif; font-size: 32px; font-weight: 500; margin-bottom: 8px; }
+.what-sub { font-size: 13px; color: var(--text-dim); max-width: 400px; line-height: 1.65; margin-bottom: 22px; }
+.what-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 2px; }
+.wi { background: var(--bg-card); border: 1px solid var(--border); padding: 22px 24px; transition: border-color 0.2s; }
+.wi:nth-child(1) { border-radius: 14px 0 0 0; } .wi:nth-child(2) { border-radius: 0 14px 0 0; }
+.wi:nth-child(3) { border-radius: 0 0 0 14px; } .wi:nth-child(4) { border-radius: 0 0 14px 0; }
+.wi:hover { border-color: var(--amber-border); }
+.wi-icon { font-size: 20px; margin-bottom: 10px; }
+.wi-title { font-size: 13px; font-weight: 600; margin-bottom: 5px; }
+.wi-desc { font-size: 12px; color: var(--text-dim); line-height: 1.65; }
+
+/* story */
+.c-story { position: relative; z-index: 1; max-width: 820px; margin: 0 auto; padding: 0 48px 60px; opacity: 0; animation: rise 0.8s 1.35s cubic-bezier(0.22,1,0.36,1) forwards; }
+.story-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px; padding: 28px 32px; position: relative; overflow: hidden; }
+.story-card::before { content: '\201C'; position: absolute; top: -16px; left: 22px; font-family: 'Cormorant Garamond', serif; font-size: 130px; font-style: italic; color: var(--text-muted); line-height: 1; pointer-events: none; user-select: none; }
+.story-lbl { font-size: 9px; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; color: var(--text-muted); font-family: 'JetBrains Mono', monospace; margin-bottom: 14px; }
+.story-text { font-family: 'Cormorant Garamond', serif; font-size: 19px; font-style: italic; line-height: 1.78; color: var(--text-dim); position: relative; z-index: 1; max-width: 560px; }
+.story-from { font-size: 11px; font-family: 'JetBrains Mono', monospace; color: var(--text-muted); margin-top: 14px; }
+.narrative-block { font-size: 14px; line-height: 1.8; color: var(--text-dim); border-left: 2px solid var(--amber-border); padding-left: 16px; margin-top: 14px; position: relative; z-index: 1; }
+.famous-block { display: flex; align-items: center; gap: 10px; background: rgba(167,139,250,0.05); border: 1px solid rgba(167,139,250,0.18); border-radius: 8px; padding: 10px 14px; margin-top: 14px; font-size: 12px; color: var(--purple); position: relative; z-index: 1; }
+
+/* footer */
+.c-footer { position: relative; z-index: 1; text-align: center; padding: 56px 48px 76px; border-top: 1px solid var(--border); opacity: 0; animation: rise 0.8s 1.5s cubic-bezier(0.22,1,0.36,1) forwards; }
+.f-eye { font-size: 10px; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; color: var(--text-muted); font-family: 'JetBrains Mono', monospace; margin-bottom: 16px; }
+.f-title { font-family: 'Cormorant Garamond', serif; font-size: clamp(26px, 4vw, 42px); font-weight: 500; line-height: 1.15; margin-bottom: 12px; }
+.f-title em { font-style: italic; color: var(--amber); }
+.f-sub { font-size: 14px; color: var(--text-dim); margin-bottom: 30px; line-height: 1.6; }
+.btn-cta { display: inline-block; background: var(--amber); color: #000; border: none; border-radius: 11px; padding: 16px 40px; font-family: 'DM Sans', sans-serif; font-size: 15px; font-weight: 700; cursor: pointer; transition: all 0.25s; }
+.btn-cta:hover:not(:disabled) { background: var(--amber-bright); transform: translateY(-2px); box-shadow: 0 18px 48px rgba(200,134,10,0.35); }
+.btn-cta:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+.btn-cta.claimed { background: rgba(167,139,250,0.12); border: 1px solid rgba(167,139,250,0.3); color: var(--purple); cursor: default; transform: none; box-shadow: none; }
+.f-note { margin-top: 14px; font-size: 11px; color: var(--text-muted); font-family: 'JetBrains Mono', monospace; }
+.claim-success { margin-top: 14px; font-size: 13px; color: var(--green); font-family: 'JetBrains Mono', monospace; display: none; }
+
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border-light); border-radius: 2px; }
+
+@media(max-width:700px) {
+  .c-hero { padding: 120px 24px 48px; }
+  .c-record, .c-what, .c-story { padding-left: 24px; padding-right: 24px; }
+  .c-nav { padding: 14px 20px; }
+  .rec-body { grid-template-columns: 1fr; }
+  .rb { border-right: none; border-bottom: 1px solid var(--border); }
+  .rb:last-child { border-bottom: none; }
+  .what-grid { grid-template-columns: 1fr; }
+  .wi { border-radius: 0 !important; }
+  .wi:first-child { border-radius: 14px 14px 0 0 !important; }
+  .wi:last-child { border-radius: 0 0 14px 14px !important; }
+  .c-footer { padding: 40px 24px 60px; }
+}
+</style>
+</head>
+<body>
+
+<!-- Loading state -->
+<div id="loadingScreen" class="loading-screen">
+  <div class="spin-lg"></div>
+  <div class="load-text">Loading your guitar record...</div>
+</div>
+
+<!-- Error state -->
+<div id="errorScreen" class="error-screen" style="display:none">
+  <div class="err-icon">🎸</div>
+  <div class="err-title" id="errTitle">Record Not Found</div>
+  <div class="err-desc" id="errDesc">This claim link may have expired or is invalid. If you received this link by email, please check that you're using the full URL.</div>
+</div>
+
+<!-- Claim page -->
+<div id="claimPage" style="display:none">
+  <div class="atm"></div>
+
+  <nav class="c-nav">
+    <span class="c-logo">TWNG</span>
+    <button class="c-nav-btn" id="navClaimBtn" onclick="jumpTo('footer-anchor')">This Is My Guitar</button>
+  </nav>
+
+  <div class="c-hero">
+    <div class="found-pill"><span class="pill-dot"></span><span class="pill-text" id="pillText">Guitar Documented</span></div>
+    <h1 class="h1" id="heroTitle">—</h1>
+    <p class="h2">We built it a record. Specs, serial, history — already here.</p>
+    <p class="hbody" id="heroBody">—</p>
+    <div class="hbtns">
+      <button class="btn-p" id="heroClaimBtn" onclick="jumpTo('footer-anchor')">This Is My Guitar — Claim It</button>
+      <button class="btn-g" onclick="jumpTo('record-anchor')">See What We Found ↓</button>
+    </div>
+  </div>
+
+  <div class="c-record" id="record-anchor">
+    <div class="rec-label">Guitar Record · TWNG Archive</div>
+    <div class="rec-card">
+      <div class="rec-visual">
+        <div class="rv-src" id="recSrc">—</div>
+        <div class="rv-doc" id="recDocBadge">&#10003; Documented</div>
+        <div class="rec-emoji">🎸</div>
+      </div>
+      <div class="rec-body">
+        <div class="rb">
+          <div class="rb-lbl">Instrument</div>
+          <div class="g-make" id="recMake">—</div>
+          <div class="g-model" id="recModel">—</div>
+          <div class="g-year" id="recYear">—</div>
+          <div class="slist" id="recSpecs"></div>
+        </div>
+        <div class="rb">
+          <div class="rb-lbl">History</div>
+          <div id="recTimeline"></div>
+        </div>
+        <div class="rb">
+          <div class="rb-lbl">Tags</div>
+          <div class="tags-col" id="recTags"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="c-what">
+    <div class="what-title">What's in this record</div>
+    <p class="what-sub">We documented what the listing shows. Claiming it lets you add everything it doesn't.</p>
+    <div class="what-grid">
+      <div class="wi"><div class="wi-icon">🔍</div><div class="wi-title">What we extracted</div><div class="wi-desc">Make, model, serial, specs, condition, and your listing description — structured and saved before the listing disappears.</div></div>
+      <div class="wi"><div class="wi-icon">✏️</div><div class="wi-title">What only you can add</div><div class="wi-desc">Repairs, modifications, service history — the things no listing can know. You complete the record.</div></div>
+      <div class="wi"><div class="wi-icon">🔗</div><div class="wi-title">What the record does</div><div class="wi-desc">Every future owner sees the same documented history. The guitar carries its record through every sale.</div></div>
+      <div class="wi"><div class="wi-icon">🆓</div><div class="wi-title">What it costs</div><div class="wi-desc">Nothing. Claiming and maintaining your guitar's record is free. Always. This isn't a trial.</div></div>
+    </div>
+  </div>
+
+  <div class="c-story" id="storySection" style="display:none">
+    <div class="story-card">
+      <div class="story-lbl" id="storyLabel">From the Listing</div>
+      <div class="story-text" id="storyText">—</div>
+      <div class="story-from" id="storyFrom">—</div>
+      <div class="narrative-block" id="narrativeBlock" style="display:none"></div>
+      <div class="famous-block" id="famousBlock" style="display:none"></div>
+    </div>
+  </div>
+
+  <div class="c-footer" id="footer-anchor">
+    <div class="f-eye" id="footerEye">Free · No credit card</div>
+    <h2 class="f-title" id="footerTitle">It's your <em>guitar.</em><br>Your record should be too.</h2>
+    <p class="f-sub" id="footerSub">We documented it. You complete it. Takes two minutes.</p>
+    <button class="btn-cta" id="claimBtn" onclick="claimGuitar()">Claim This Guitar — It's Free</button>
+    <div class="f-note" id="footerNote">free forever · no credit card · 2 minutes</div>
+    <div class="claim-success" id="claimSuccess">&#10003; Guitar claimed successfully! You'll receive access details shortly.</div>
+  </div>
+</div>
+
+<script>
+// ── SUPABASE CONFIG ──
+const SUPABASE_URL = 'https://wtqylorvckigssjlurwj.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind0cXlsb3J2Y2tpZ3Nzamx1cndqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTczNjEyNDMsImV4cCI6MjA3MjkzNzI0M30.bkD-pSp4cc3B_bj-pAjjYGj_GCs6Sepsj6G6fUwgPmo';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+let GUITAR = null;
+let CLAIM_TOKEN = null;
+
+function jumpTo(id) { document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+
+// ── LOAD ──
+async function init() {
+  const params = new URLSearchParams(window.location.search);
+  CLAIM_TOKEN = params.get('token');
+
+  if (!CLAIM_TOKEN) {
+    showError('No Claim Token', 'This page requires a claim token. You should have received a link like:<br><code style="color:var(--amber)">twng-claim-v5.html?token=...</code>');
+    return;
+  }
+
+  const { data, error } = await sb.from('seed_guitars')
+    .select('*')
+    .eq('claim_token', CLAIM_TOKEN)
+    .single();
+
+  if (error || !data) {
+    showError('Record Not Found', 'This claim link may have expired or is invalid. Please check that you\'re using the full URL from your invitation email.');
+    return;
+  }
+
+  GUITAR = data;
+  renderClaimPage(data);
+}
+
+function showError(title, desc) {
+  document.getElementById('loadingScreen').style.display = 'none';
+  document.getElementById('errTitle').innerHTML = title;
+  document.getElementById('errDesc').innerHTML = desc;
+  document.getElementById('errorScreen').style.display = 'flex';
+}
+
+// ── RENDER ──
+function renderClaimPage(row) {
+  const meta = row.extraction_metadata || {};
+  const specs = meta.specs || {};
+  const story = meta.story || {};
+  const prov = meta.provenance || {};
+  const tags = meta.tags || [];
+  const isClaimed = row.status === 'claimed';
+
+  const brand = row.brand || meta.brand || 'Unknown';
+  const model = row.model || meta.model || 'Guitar';
+  const year = meta.year_text || (row.year ? String(row.year) : '');
+  const finish = meta.finish || '';
+  const origin = meta.country_of_origin || '';
+  const instrument = [year, brand, model].filter(Boolean).join(' ');
+  const platform = row.source_platform || prov.source_platform || 'a listing';
+
+  // Title
+  document.title = `TWNG — ${brand} ${model}`;
+
+  // Hero
+  document.getElementById('heroTitle').innerHTML = `We found your <em>${instrument}.</em>`;
+  document.getElementById('heroBody').innerHTML = `We came across your post on <strong>${platform}</strong> and documented the guitar in the TWNG archive. Specs, condition, the story you wrote — it's all here. This page is free, and it's yours to complete.`;
+
+  // Record card
+  document.getElementById('recSrc').textContent = platform;
+  document.getElementById('recMake').textContent = brand;
+  document.getElementById('recModel').textContent = model;
+  document.getElementById('recYear').textContent = [year, origin].filter(Boolean).join(' · ') || '—';
+
+  // Specs list
+  const specPairs = [
+    ['Serial', meta.serial_number],
+    ['Finish', finish],
+    ['Body', specs.body || specs.top],
+    ['Neck', specs.neck_material],
+    ['Pickups', specs.pickups],
+    ['Bridge', specs.bridge],
+    ['Frets', specs.frets],
+    ['Scale', specs.scale_length_inches ? specs.scale_length_inches + '"' : null]
+  ].filter(([,v]) => v);
+
+  document.getElementById('recSpecs').innerHTML = specPairs.map(([k,v]) =>
+    `<div class="sr"><span class="sk">${k}</span><span class="sv">${v}</span></div>`
+  ).join('');
+
+  // Timeline
+  const timelineEvents = meta.timeline_events || [];
+  let tlHTML = '';
+
+  if (timelineEvents.length > 0) {
+    tlHTML = timelineEvents.map((ev, i) => {
+      const isLast = i === timelineEvents.length - 1;
+      const tier = ev.tier || 'story_based';
+      const tierClass = tier === 'factual' ? 'b' : tier === 'story_based' ? 'a' : 'm';
+      return `
+        <div class="tl-e">
+          <div class="tl-ln"><div class="tl-d ${tierClass}"></div>${!isLast ? '<div class="tl-st"></div>' : ''}</div>
+          <div class="tl-c">
+            <div class="tl-tier ${tierClass}">${tier.replace('_', ' ')}</div>
+            <div class="tl-t">${ev.title}</div>
+            <div class="tl-d2">${ev.description || ''}</div>
+            <div class="tl-dt">${ev.event_date ? ev.event_date.substring(0,4) : '—'}</div>
+          </div>
+        </div>`;
+    }).join('');
+  } else {
+    // Fallback timeline from basic data
+    tlHTML = `
+      <div class="tl-e">
+        <div class="tl-ln"><div class="tl-d b"></div><div class="tl-st"></div></div>
+        <div class="tl-c">
+          <div class="tl-tier b">factual</div>
+          <div class="tl-t">Manufactured — ${[brand, year].filter(Boolean).join(', ')}</div>
+          <div class="tl-d2">Based on available data.</div>
+          <div class="tl-dt">${[year, origin].filter(Boolean).join(' · ') || '—'}</div>
+        </div>
+      </div>
+      <div class="tl-e">
+        <div class="tl-ln"><div class="tl-d m"></div></div>
+        <div class="tl-c">
+          <div class="tl-tier m">system</div>
+          <div class="tl-t" style="color:var(--text-dim)">Documented by TWNG</div>
+          <div class="tl-dt">2026</div>
+        </div>
+      </div>`;
+  }
+  document.getElementById('recTimeline').innerHTML = tlHTML;
+
+  // Tags
+  document.getElementById('recTags').innerHTML = tags.length > 0
+    ? tags.map(t => `<span class="tag">${t}</span>`).join('')
+    : '<span style="font-size:11px;color:var(--text-muted)">No tags</span>';
+
+  // Story
+  const storyText = story.original_text_translated || story.narrative || story.context || row.story;
+  if (storyText) {
+    document.getElementById('storySection').style.display = 'block';
+    document.getElementById('storyLabel').textContent = prov.source_language === 'Hebrew' || row.language === 'he' ? 'Translated from the original post' : 'From the original post';
+    document.getElementById('storyText').textContent = storyText;
+    document.getElementById('storyFrom').textContent = `Source: ${platform}`;
+
+    if (story.narrative && story.narrative !== storyText) {
+      document.getElementById('narrativeBlock').style.display = 'block';
+      document.getElementById('narrativeBlock').textContent = story.narrative;
+    }
+    if (story.famous_connection) {
+      document.getElementById('famousBlock').style.display = 'flex';
+      document.getElementById('famousBlock').innerHTML = `&#9733; ${story.famous_connection}`;
+    }
+  }
+
+  // Footer
+  document.getElementById('footerTitle').innerHTML = `It's your <em>${model}.</em><br>Your record should be too.`;
+
+  // Claimed state
+  if (isClaimed) {
+    setClaimedState();
+  }
+
+  // Show page
+  document.getElementById('loadingScreen').style.display = 'none';
+  document.getElementById('claimPage').style.display = 'block';
+}
+
+// ── CLAIM ──
+async function claimGuitar() {
+  if (!GUITAR || GUITAR.status === 'claimed') return;
+
+  const btn = document.getElementById('claimBtn');
+  btn.disabled = true;
+  btn.textContent = 'Claiming...';
+
+  const { error } = await sb.from('seed_guitars')
+    .update({ status: 'claimed', claimed_at: new Date().toISOString() })
+    .eq('claim_token', CLAIM_TOKEN)
+    .eq('status', 'approved');
+
+  if (error) {
+    btn.disabled = false;
+    btn.textContent = 'Claim This Guitar — It\'s Free';
+    alert('Error claiming guitar: ' + error.message);
+    return;
+  }
+
+  GUITAR.status = 'claimed';
+  setClaimedState();
+}
+
+function setClaimedState() {
+  // Footer button
+  const btn = document.getElementById('claimBtn');
+  btn.className = 'btn-cta claimed';
+  btn.textContent = '✓ Guitar Claimed';
+  btn.disabled = true;
+  document.getElementById('claimSuccess').style.display = 'block';
+  document.getElementById('footerEye').textContent = 'Claimed · Your Guitar Record';
+  document.getElementById('footerSub').textContent = 'This guitar is now part of your TWNG collection.';
+
+  // Nav button
+  const navBtn = document.getElementById('navClaimBtn');
+  navBtn.className = 'c-nav-btn claimed';
+  navBtn.textContent = '✓ Claimed';
+  navBtn.disabled = true;
+
+  // Hero button
+  const heroBtn = document.getElementById('heroClaimBtn');
+  heroBtn.className = 'btn-p claimed';
+  heroBtn.textContent = '✓ Guitar Claimed';
+  heroBtn.disabled = true;
+
+  // Pill
+  document.getElementById('pillText').textContent = 'Guitar Claimed';
+
+  // Doc badge
+  document.getElementById('recDocBadge').innerHTML = '&#10003; Claimed';
+  document.getElementById('recDocBadge').style.color = 'var(--purple)';
+  document.getElementById('recDocBadge').style.background = 'rgba(167,139,250,0.1)';
+  document.getElementById('recDocBadge').style.borderColor = 'rgba(167,139,250,0.28)';
+}
+
+// ── INIT ──
+init();
+</script>
+</body>
+</html>

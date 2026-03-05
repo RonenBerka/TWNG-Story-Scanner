@@ -101,7 +101,8 @@ export async function sendClaimEmail(params: {
   return result;
 }
 
-export const CLAIM_BASE_URL = "twng-claim-v5.html";
+export const CLAIM_BASE_URL =
+  import.meta.env.VITE_CLAIM_BASE_URL || "/claim.html";
 
 export function buildClaimUrl(claimToken: string) {
   return `${CLAIM_BASE_URL}?token=${claimToken}`;

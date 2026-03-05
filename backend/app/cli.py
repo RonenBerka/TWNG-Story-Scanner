@@ -39,6 +39,21 @@ def main() -> None:
     load_viewer = sub.add_parser("load-viewer-data", help="Import extraction viewer JSON into TWNGStoryRecords")
     load_viewer.add_argument("json_file", help="Path to viewer JSON file (with extraction_metadata + guitars)")
 
+    # export-twng
+    export_parser = sub.add_parser("export-twng", help="Export TWNGStoryRecords to TWNG import JSON")
+    export_parser.add_argument(
+        "--output", "-o", default=None,
+        help="Output file path (default: twng_export_YYYYMMDD_HHMMSS.json)",
+    )
+    export_parser.add_argument(
+        "--visibility", default=None,
+        help="Filter by visibility (e.g. 'internal', 'published')",
+    )
+    export_parser.add_argument(
+        "--ids", default=None,
+        help="Comma-separated record IDs to export (default: all active records)",
+    )
+
     args = parser.parse_args()
 
     if args.command == "ingest-reddit":
@@ -87,6 +102,61 @@ def main() -> None:
             f"Done — inserted: {stats['inserted']}, skipped: {stats['skipped']}, "
             f"errors: {stats['errors']}"
         )
+
+    elif args.command == "export-twng":
+        import json as _json
+        from datetime import datetime as _dt, timezone as _tz
+
+        from app.db.models import TWNGStoryRecord
+        from app.db.session import SessionLocal
+        from app.export.twng_mapper import build_twng_export
+
+        db = SessionLocal()
+        try:
+            query = db.query(TWNGStoryRecord).filter(
+                TWNGStoryRecord.extraction_data.isnot(None),
+                TWNGStoryRecord.takedown_status == "active",
+            )
+            if args.visibility:
+                query = query.filter(TWNGStoryRecord.visibility == args.visibility)
+            if args.ids:
+                id_list = [rid.strip() for rid in args.ids.split(",") if rid.strip()]
+                query = query.filter(TWNGStoryRecord.id.in_(id_list))
+
+            records = query.order_by(TWNGStoryRecord.published_at.desc()).all()
+
+            guitars: list[dict] = []
+            record_ids: list[str] = []
+            for rec in records:
+                data = rec.extraction_data or {}
+                if "guitars" in data:
+                    for g in data["guitars"]:
+                        g.setdefault("_record_id", str(rec.id))
+                        g.setdefault("_source_url", rec.source_url)
+                        guitars.append(g)
+                        record_ids.append(str(rec.id))
+                elif any(k in data for k in ("brand", "model", "instrument_type")):
+                    data.setdefault("_record_id", str(rec.id))
+                    data.setdefault("_source_url", rec.source_url)
+                    guitars.append(data)
+                    record_ids.append(str(rec.id))
+
+            export_data = build_twng_export(guitars, record_ids=record_ids)
+
+            output_path = args.output or f"twng_export_{_dt.now(_tz.utc).strftime('%Y%m%d_%H%M%S')}.json"
+            with open(output_path, "w", encoding="utf-8") as f:
+                _json.dump(export_data, f, indent=2, ensure_ascii=False)
+
+            avg_score = (
+                sum(item["completeness"]["score"] for item in export_data["items"])
+                / max(len(export_data["items"]), 1)
+            )
+            print(
+                f"Exported {export_data['total_items']} items to {output_path}\n"
+                f"Average completeness: {avg_score:.0%}"
+            )
+        finally:
+            db.close()
 
     else:
         parser.print_help()

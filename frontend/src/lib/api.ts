@@ -165,3 +165,56 @@ export interface ViewerData {
 export function fetchViewerData(): Promise<ViewerData> {
   return edgeFetch<ViewerData>("scanner-records", "/viewer");
 }
+
+/* ------------------------------------------------------------------ */
+/*  Export to TWNG                                                      */
+/* ------------------------------------------------------------------ */
+
+export interface TWNGExportData {
+  twng_import_version: string;
+  exported_at: string;
+  source: string;
+  total_items: number;
+  items: Record<string, unknown>[];
+}
+
+export async function exportToTWNG(opts?: {
+  visibility?: string;
+  ids?: string[];
+}): Promise<TWNGExportData> {
+  const params = new URLSearchParams();
+  if (opts?.visibility) params.set("visibility", opts.visibility);
+  if (opts?.ids?.length) params.set("ids", opts.ids.join(","));
+  return edgeFetch<TWNGExportData>("scanner-records", `/export-twng?${params.toString()}`);
+}
+
+export async function downloadTWNGExport(opts?: {
+  visibility?: string;
+  ids?: string[];
+}): Promise<void> {
+  const { data: { session } } = await supabase.auth.getSession();
+  const token = session?.access_token;
+  const params = new URLSearchParams({ download: "true" });
+  if (opts?.visibility) params.set("visibility", opts.visibility);
+  if (opts?.ids?.length) params.set("ids", opts.ids.join(","));
+
+  const res = await fetch(`${DOCKER_BACKEND}/records/export-twng?${params.toString()}`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+
+  if (!res.ok) throw new Error(`Export failed: ${res.status}`);
+
+  const blob = await res.blob();
+  const disposition = res.headers.get("Content-Disposition") || "";
+  const filenameMatch = disposition.match(/filename="?(.+?)"?$/);
+  const filename = filenameMatch?.[1] || "twng_export.json";
+
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}

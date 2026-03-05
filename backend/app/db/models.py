@@ -49,6 +49,11 @@ class CandidateStory(Base):
     status = Column(Text, nullable=False, server_default="new")  # new|reviewed|approved|rejected
     reviewer_notes = Column(Text, nullable=True)
 
+    # Author / media fields (populated during ingest for TWNG export)
+    author_username = Column(Text, nullable=True)
+    author_profile_url = Column(Text, nullable=True)
+    image_urls = Column(ARRAY(Text), nullable=True)
+
     # Relationship to approved record
     record = relationship("TWNGStoryRecord", back_populates="candidate", uselist=False)
 

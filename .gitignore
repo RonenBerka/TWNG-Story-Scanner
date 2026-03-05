@@ -32,3 +32,6 @@ TWNG-Story-Scanner/
 # One-off scripts / backups
 seed_viewer_data_backup.json
 apply_viewer_integration.sh
+
+# Local Netlify folder
+.netlify

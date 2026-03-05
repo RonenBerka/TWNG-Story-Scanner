@@ -128,13 +128,13 @@ function ClaimRow({
   function buildDmTemplate(): string {
     const guitarName = `${guitar.brand} ${guitar.model}${guitar.year ? ` (${guitar.year})` : ""}`;
     return [
-      `Hi! I came across your post about your ${guitarName} and I'm writing on behalf of The World's Next Guitar (TWNG) \u2014 a project that collects and preserves remarkable guitar stories from around the world.`,
+      `Hi! I came across your post about your ${guitarName} and I'm writing on behalf of TWNG \u2014 a project that collects and preserves remarkable guitar stories from around the world.`,
       ``,
-      `Your guitar's story caught our attention and we'd love to feature it in our collection. If you're interested, you can share more details and claim your guitar's story here:`,
+      `Your guitar's story caught our attention and we'd love to feature it in our collection. If you're interested, just follow the link below to share more details and claim your guitar's story:`,
       ``,
       claimUrl,
       ``,
-      `It only takes a few minutes and helps preserve your instrument's unique history. No obligations \u2014 just a chance to be part of something cool.`,
+      `It only takes a few minutes. No obligations and no charge, just a chance to be part of something cool.`,
       ``,
       `Thanks!`,
       `\u2014 TWNG Team`,

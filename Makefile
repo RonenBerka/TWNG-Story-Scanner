@@ -1,4 +1,4 @@
-.PHONY: dev down seed ingest score enrich load-viewer pipeline test logs clean help
+.PHONY: dev down seed ingest score enrich load-viewer export-twng pipeline test logs clean help
 
 # ---------- Core ----------
 
@@ -29,6 +29,11 @@ enrich:               ## Enrich candidates above threshold
 
 load-viewer:          ## Load viewer extraction JSON into records
 	docker compose exec backend python -m app.cli load-viewer-data seed_viewer_data.json
+
+export-twng:          ## Export records to TWNG import JSON
+	docker compose exec backend python -m app.cli export-twng -o /tmp/twng_export.json
+	docker compose cp backend:/tmp/twng_export.json ./twng_export.json
+	@echo "Export saved to ./twng_export.json"
 
 pipeline: ingest score enrich   ## Run full pipeline: ingest → score → enrich
 
