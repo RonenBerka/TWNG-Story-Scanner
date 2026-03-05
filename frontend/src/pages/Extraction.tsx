@@ -139,9 +139,51 @@ export default function Extraction() {
       const postLang = candidate.language || "en";
       const postSourceUrl = candidate.source_url || "";
 
+      // Use stored author/images, or fetch live from Reddit if missing
+      let authorUsername = candidate.author_username;
+      let authorProfileUrl = candidate.author_profile_url;
+      let imageUrls = candidate.image_urls;
+
+      if (!authorUsername && postSourceUrl.includes("reddit.com")) {
+        try {
+          const redditJson = await fetch(
+            postSourceUrl.replace(/\/?$/, ".json"),
+            { headers: { "User-Agent": "TWNG-Scanner/0.1" } }
+          ).then((r) => r.json());
+          const postData = redditJson?.[0]?.data?.children?.[0]?.data;
+          if (postData) {
+            authorUsername = postData.author || null;
+            authorProfileUrl = postData.author
+              ? `https://www.reddit.com/user/${postData.author}`
+              : null;
+            if (!imageUrls || imageUrls.length === 0) {
+              const imgs: string[] = [];
+              const pUrl = postData.url || "";
+              if (/\.(jpg|jpeg|png|gif|webp)/i.test(pUrl) ||
+                  pUrl.includes("i.redd.it") || pUrl.includes("i.imgur.com")) {
+                imgs.push(pUrl);
+              }
+              if (postData.is_gallery && postData.media_metadata) {
+                for (const meta of Object.values(postData.media_metadata) as any[]) {
+                  const src = meta?.s?.u || meta?.s?.gif;
+                  if (src) imgs.push(src.replace(/&amp;/g, "&"));
+                }
+              }
+              if (imgs.length === 0) {
+                const preview = postData.preview?.images?.[0]?.source?.url;
+                if (preview) imgs.push(preview.replace(/&amp;/g, "&"));
+              }
+              if (imgs.length > 0) imageUrls = imgs;
+            }
+          }
+        } catch {
+          // Non-critical: proceed without Reddit metadata
+        }
+      }
+
       await doExtraction(
         rawText, postPlatform, postLang, postSourceUrl, candidate.id,
-        candidate.author_username, candidate.author_profile_url, candidate.image_urls,
+        authorUsername, authorProfileUrl, imageUrls,
       );
     } catch (e: any) {
       setStep("error");
