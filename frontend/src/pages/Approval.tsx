@@ -55,6 +55,7 @@ export default function Approval() {
         source: "TWNG Story Scanner",
         total_items: selectedGuitars.length,
         items: selectedGuitars.map((g) => ({
+          id: crypto.randomUUID(),
           instrument: {
             make: g.brand,
             model: g.model,
