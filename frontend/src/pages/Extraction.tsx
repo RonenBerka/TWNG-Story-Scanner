@@ -9,6 +9,7 @@ import {
 import { fetchCandidateRawText, type Candidate } from "../lib/api";
 import { useInsertExtraction } from "../lib/guitarQueries";
 import { useApprovedCandidates, useMarkExtracted } from "../lib/queries";
+import { supabase, EDGE_BASE } from "../lib/supabase";
 import "../styles/extraction.css";
 
 type Step = "idle" | "loading-text" | "claude" | "parse" | "save" | "done" | "error";
@@ -146,34 +147,25 @@ export default function Extraction() {
 
       if (!authorUsername && postSourceUrl.includes("reddit.com")) {
         try {
-          const redditJson = await fetch(
-            postSourceUrl.replace(/\/?$/, ".json"),
-            { headers: { "User-Agent": "TWNG-Scanner/0.1" } }
-          ).then((r) => r.json());
-          const postData = redditJson?.[0]?.data?.children?.[0]?.data;
-          if (postData) {
-            authorUsername = postData.author || null;
-            authorProfileUrl = postData.author
-              ? `https://www.reddit.com/user/${postData.author}`
-              : null;
-            if (!imageUrls || imageUrls.length === 0) {
-              const imgs: string[] = [];
-              const pUrl = postData.url || "";
-              if (/\.(jpg|jpeg|png|gif|webp)/i.test(pUrl) ||
-                  pUrl.includes("i.redd.it") || pUrl.includes("i.imgur.com")) {
-                imgs.push(pUrl);
-              }
-              if (postData.is_gallery && postData.media_metadata) {
-                for (const meta of Object.values(postData.media_metadata) as any[]) {
-                  const src = meta?.s?.u || meta?.s?.gif;
-                  if (src) imgs.push(src.replace(/&amp;/g, "&"));
-                }
-              }
-              if (imgs.length === 0) {
-                const preview = postData.preview?.images?.[0]?.source?.url;
-                if (preview) imgs.push(preview.replace(/&amp;/g, "&"));
-              }
-              if (imgs.length > 0) imageUrls = imgs;
+          const { data: { session } } = await supabase.auth.getSession();
+          const token = session?.access_token || "";
+          const resp = await fetch(`${EDGE_BASE}/reddit-post-meta`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+              apikey: import.meta.env.VITE_SUPABASE_ANON_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind0cXlsb3J2Y2tpZ3Nzamx1cndqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTczNjEyNDMsImV4cCI6MjA3MjkzNzI0M30.bkD-pSp4cc3B_bj-pAjjYGj_GCs6Sepsj6G6fUwgPmo",
+            },
+            body: JSON.stringify({ url: postSourceUrl }),
+          });
+          if (resp.ok) {
+            const meta = await resp.json();
+            if (meta.author) {
+              authorUsername = meta.author;
+              authorProfileUrl = meta.authorProfileUrl || null;
+            }
+            if ((!imageUrls || imageUrls.length === 0) && meta.images?.length > 0) {
+              imageUrls = meta.images;
             }
           }
         } catch {
@@ -192,8 +184,38 @@ export default function Extraction() {
     }
   }
 
-  function handleManualExtract() {
-    doExtraction(text, platform, lang, sourceUrl);
+  async function handleManualExtract() {
+    let authorUsername: string | null = null;
+    let authorProfileUrl: string | null = null;
+    let imageUrls: string[] | null = null;
+
+    if (sourceUrl.includes("reddit.com")) {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        const token = session?.access_token || "";
+        const resp = await fetch(`${EDGE_BASE}/reddit-post-meta`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+            apikey: import.meta.env.VITE_SUPABASE_ANON_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind0cXlsb3J2Y2tpZ3Nzamx1cndqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTczNjEyNDMsImV4cCI6MjA3MjkzNzI0M30.bkD-pSp4cc3B_bj-pAjjYGj_GCs6Sepsj6G6fUwgPmo",
+          },
+          body: JSON.stringify({ url: sourceUrl }),
+        });
+        if (resp.ok) {
+          const meta = await resp.json();
+          if (meta.author) {
+            authorUsername = meta.author;
+            authorProfileUrl = meta.authorProfileUrl || null;
+          }
+          if (meta.images?.length > 0) imageUrls = meta.images;
+        }
+      } catch {
+        // Non-critical
+      }
+    }
+
+    doExtraction(text, platform, lang, sourceUrl, undefined, authorUsername, authorProfileUrl, imageUrls);
   }
 
   const running = step === "loading-text" || step === "claude" || step === "parse" || step === "save";
