@@ -128,6 +128,16 @@ export async function triggerRedditIngest(limit: number = 20): Promise<{ inserte
   return res.json();
 }
 
+/** Ingest Reddit posts collected by the browser-side scanner bookmarklet. Insert-only (never overwrites). */
+export async function ingestRedditBatch(
+  items: unknown[]
+): Promise<{ inserted: number; skipped: number; received: number }> {
+  return edgeFetch("scanner-ingest-reddit-batch", "", {
+    method: "POST",
+    body: JSON.stringify({ items }),
+  });
+}
+
 export async function triggerScoring(): Promise<{ scored: number; errors: number }> {
   return edgeFetch("scanner-score", "", { method: "POST" });
 }

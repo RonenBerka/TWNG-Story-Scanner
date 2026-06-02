@@ -1,6 +1,6 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { useCandidates, useApprove, useReject } from "../lib/queries";
-import { triggerRedditIngest, triggerScoring } from "../lib/api";
+import { ingestRedditBatch, triggerScoring } from "../lib/api";
 import type { Candidate, CandidateFilters } from "../lib/api";
 import CandidateTable from "../components/CandidateTable";
 import CandidatePreview from "../components/CandidatePreview";
@@ -16,12 +16,37 @@ export default function Scanner() {
     offset: 0,
   });
   const [selected, setSelected] = useState<Candidate | null>(null);
-  const [scanning, setScanning] = useState(false);
   const [scoring, setScoring] = useState(false);
 
   const { data, isLoading, isError, error, refetch } = useCandidates(filters);
   const approve = useApprove();
   const reject = useReject();
+  const importedRef = useRef(false);
+
+  // Auto-import Reddit posts handed off by the "TWNG Scan" bookmarklet.
+  // The bookmarklet runs on reddit.com (same-origin fetch works there),
+  // stashes the posts in window.name, and navigates here. Insert-only.
+  useEffect(() => {
+    if (importedRef.current) return;
+    const raw = window.name;
+    if (typeof raw !== "string" || !raw.startsWith("TWNG:")) return;
+    importedRef.current = true;
+    const payload = raw.slice(5);
+    window.name = ""; // clear immediately so it can't re-import
+    let items: unknown[] = [];
+    try {
+      items = JSON.parse(payload);
+    } catch {
+      return;
+    }
+    if (!Array.isArray(items) || items.length === 0) return;
+    ingestRedditBatch(items)
+      .then((r) => {
+        alert(`Reddit scan imported ✓  New: ${r.inserted} · Duplicates: ${r.skipped} (of ${r.received})`);
+        refetch();
+      })
+      .catch((e: any) => alert(`Import failed: ${e?.message || e}`));
+  }, [refetch]);
 
   const handleRowClick = useCallback((candidate: Candidate) => {
     setSelected(candidate);
@@ -46,22 +71,16 @@ export default function Scanner() {
     [reject]
   );
 
-  const scanReddit = useCallback(async () => {
-    setScanning(true);
-    try {
-      const result = await triggerRedditIngest(50);
-      alert(`Scan complete: ${result.inserted} new, ${result.skipped} duplicates, ${result.errors} errors`);
-      refetch();
-    } catch (err: any) {
-      if (err instanceof TypeError && err.message.includes("fetch")) {
-        alert("Reddit scanning requires the local Docker backend.\n\nRun 'docker compose up' on your machine to enable scanning.");
-      } else {
-        alert(`Scan failed: ${err.message}`);
-      }
-    } finally {
-      setScanning(false);
-    }
-  }, [refetch]);
+  const scanReddit = useCallback(() => {
+    // Reddit blocks server-side scanning, so the scan runs in your own browser:
+    // open Reddit, then click the "TWNG Scan" bookmarklet. It collects posts and
+    // returns here automatically, where they are imported (insert-only).
+    alert(
+      "Opening Reddit. Once it loads, click your 'TWNG Scan' bookmark.\n\n" +
+      "It will collect guitar posts (~40s) and jump back here automatically to import them."
+    );
+    window.open("https://www.reddit.com/", "_blank", "noopener");
+  }, []);
 
   const scoreAll = useCallback(async () => {
     setScoring(true);
@@ -84,8 +103,11 @@ export default function Scanner() {
       <header className="inbox-header">
         <h1>Story Scanner</h1>
         <div className="header-right">
-          <button className="btn btn-scan" onClick={scanReddit} disabled={scanning}>
-            {scanning ? "Scanning..." : "Scan Reddit"}
+          <button
+            className="btn btn-scan"
+            onClick={scanReddit}
+          >
+            Scan Reddit ↗
           </button>
           <button className="btn btn-score" onClick={scoreAll} disabled={scoring}>
             {scoring ? "Scoring..." : "Score All"}
